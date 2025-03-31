@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roadmap Timer</title>
+    <style>
+        /* --- CSS Starts Here --- */
+        :root {
+            --active-color: #d4edda; /* Light green */
+            --inactive-color: #f9f9f9; /* Default item background */
+            --border-color: #eee;
+            --active-border-color: #28a745; /* Green */
+        }
+
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+
+        .info-container,
+        .controls,
+        .roadmap,
+        .timer-controls {
+            background-color: #fff;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Current Time & Preview */
+        .current-time-container {
+            text-align: center;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+        #currentTime {
+            font-weight: bold;
+            color: #0056b3;
+        }
+        .preview-settings {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .preview-settings label { cursor: pointer; }
+        #previewTimeInputContainer { display: inline-block; }
+        #previewTimeInputContainer.hidden { display: none; }
+
+        /* Add Activity Controls */
+        .controls h2 { margin-top: 0; }
+        .controls .input-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .controls .description-input {
+             flex-grow: 1;
+             min-width: 200px;
+        }
+        .controls input[type="text"]{
+             padding: 10px;
+             border: 1px solid #ccc;
+             border-radius: 4px;
+             width: 100%;
+             box-sizing: border-box;
+        }
+        .controls .duration-inputs {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .controls .duration-inputs input[type="number"] {
+            width: 60px;
+            padding: 10px 5px;
+            text-align: center;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            -moz-appearance: textfield;
+        }
+        .controls .duration-inputs input[type="number"]::-webkit-outer-spin-button,
+        .controls .duration-inputs input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .controls .duration-inputs label {
+            font-size: 0.9em;
+            color: #555;
+            margin-right: 5px;
+        }
+
+        /* Buttons */
+         .controls button,
+        .timer-controls button {
+            padding: 10px 15px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, opacity 0.2s ease; /* Added opacity */
+            height: 40px; /* Match input height */
+            white-space: nowrap;
+        }
+        .controls button { background-color: #28a745; /* Green */ }
+        .timer-controls button#startBtn { background-color: #28a745; /* Green */ }
+        .timer-controls button#stopBtn { background-color: #dc3545; /* Red */ }
+        .timer-controls button#resetBtn { background-color: #ffc107; /* Yellow/Orange */ color: #333; }
+
+        .controls button:hover,
+        .timer-controls button:hover:not(:disabled) { /* Only hover effect if not disabled */
+             opacity: 0.9;
+        }
+
+        .timer-controls button:disabled {
+            background-color: #ccc !important; /* Use important to override specific button colors */
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* Activity List */
+        #activityList {
+            list-style: none;
+            padding: 0;
+        }
+        #activityList li {
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s ease, border-left 0.3s ease; /* Updated transition */
+            flex-wrap: wrap;
+            gap: 10px;
+            /* Default background set by JS based on state */
+            background-color: var(--inactive-color); /* Default inactive */
+            position: relative; /* Needed for pseudo-elements if used later, good practice */
+            overflow: hidden; /* Ensure gradient stays within bounds */
+        }
+
+        #activityList li.active {
+            /* Style changes handled primarily by inline style for progress */
+             border-left: 5px solid var(--active-border-color);
+             font-weight: bold; /* Keep font weight change */
+        }
+
+        /* Visual Progress Bar Style (set dynamically via JS) */
+        /* The background gradient will be applied inline */
+
+        .activity-details {
+            flex-grow: 1;
+            margin-right: 15px;
+            min-width: 150px; /* Ensure some minimum width */
+            z-index: 1; /* Ensure text is above background gradient */
+            position: relative; /* Needed for z-index */
+
+        }
+         .activity-details .description {} /* Main description */
+         .activity-details .duration {
+            font-size: 0.9em;
+            color: #666;
+            margin-left: 5px;
+         }
+         .activity-details .lap-countdown {
+            font-size: 0.9em;
+            color: #333;
+            font-weight: bold; /* Make countdown stand out */
+            margin-top: 5px;
+            display: block; /* Ensure it takes its own line */
+            min-height: 1.2em; /* Prevent layout shift when text appears/disappears */
+         }
+
+        .activity-times {
+            text-align: right;
+            font-size: 0.9em;
+            color: #555;
+            min-width: 150px;
+            white-space: nowrap;
+             z-index: 1; /* Ensure text is above background gradient */
+             position: relative; /* Needed for z-index */
+        }
+        .activity-times span { display: block; }
+
+        /* Timer Controls Area */
+        .timer-controls {
+            text-align: center;
+        }
+        .timer-status {
+             margin-top: 15px; /* Space above status/countdown */
+             text-align: center;
+        }
+        #status {
+            margin-left: 15px;
+            font-style: italic;
+            color: #666;
+        }
+         #globalCountdown {
+            margin-top: 8px;
+            font-weight: bold;
+            color: #0056b3;
+            min-height: 1.2em; /* Prevent layout shift */
+         }
+        /* --- CSS Ends Here --- */
+    </style>
+</head>
+<body>
+
+    <h1>Roadmap Timer</h1>
+
+    <div class="info-container">
+        <div class="current-time-container">
+            Current Time: <span id="currentTime">--:--:--</span>
+        </div>
+        <div class="preview-settings">
+            <label>
+                <input type="checkbox" id="previewToggle"> Preview Start/End Times
+            </label>
+            <div id="previewTimeInputContainer" class="hidden">
+                <label for="previewStartTime">Preview Start:</label>
+                <input type="time" id="previewStartTime">
+            </div>
+        </div>
+    </div>
+
+
+    <div class="controls">
+        <h2>Add Activity</h2>
+        <div class="input-group">
+            <div class="description-input">
+                 <input type="text" id="activityDesc" placeholder="Activity description">
+            </div>
+             <div class="duration-inputs">
+                <input type="number" id="activityDurationH" placeholder="H" min="0"> <label>h</label>
+                <input type="number" id="activityDurationM" placeholder="M" min="0" max="59"> <label>m</label>
+                <input type="number" id="activityDurationS" placeholder="S" min="0" max="59"> <label>s</label>
+             </div>
+            <button id="addActivityBtn">Add Activity</button>
+        </div>
+    </div>
+
+    <div class="roadmap">
+        <h2>Planned Activities</h2>
+        <ul id="activityList">
+            <!-- Activities will be added here by JavaScript -->
+        </ul>
+    </div>
+
+    <div class="timer-controls">
+        <button id="startBtn">Start Roadmap</button>
+        <button id="stopBtn" disabled>Stop Roadmap</button>
+        <button id="resetBtn">Reset All</button>
+         <div class="timer-status">
+            <span id="status">Status: Idle</span>
+             <div id="globalCountdown"></div> <!-- Global countdown placeholder -->
+         </div>
+    </div>
+
+    <script>
+        // --- JavaScript Starts Here ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const currentTimeEl = document.getElementById('currentTime');
+            const previewToggle = document.getElementById('previewToggle');
+            const previewTimeInputContainer = document.getElementById('previewTimeInputContainer');
+            const previewStartTimeInput = document.getElementById('previewStartTime');
+            const activityDescInput = document.getElementById('activityDesc');
+            const activityDurationHInput = document.getElementById('activityDurationH');
+            const activityDurationMInput = document.getElementById('activityDurationM');
+            const activityDurationSInput = document.getElementById('activityDurationS');
+            const addActivityBtn = document.getElementById('addActivityBtn');
+            const activityListEl = document.getElementById('activityList');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const statusEl = document.getElementById('status');
+            const globalCountdownEl = document.getElementById('globalCountdown');
+
+            // --- State ---
+            let activities = [];
+            let nextActivityId = 0;
+            let timerInterval = null;
+            let clockInterval = null;
+            let isRunning = false;
+            let currentActivityIndex = -1;
+            let overallStartTime = null;
+            const ACTIVE_COLOR = getComputedStyle(document.documentElement).getPropertyValue('--active-color').trim() || '#d4edda';
+            const INACTIVE_COLOR = getComputedStyle(document.documentElement).getPropertyValue('--inactive-color').trim() || '#f9f9f9';
+
+
+            // --- Functions ---
+
+            function formatTime(date) {
+                if (!date || !(date instanceof Date) || isNaN(date)) return '--:--:--';
+                try {
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    const seconds = String(date.getSeconds()).padStart(2, '0');
+                    return `${hours}:${minutes}:${seconds}`;
+                } catch (error) {
+                    console.error("Error formatting time:", error, "Input date:", date);
+                    return '??:??:??';
+                }
+            }
+
+            function formatDuration(millis, showZeroSeconds = false) {
+                 if (isNaN(millis) || millis < 0) return "Invalid duration";
+                 const totalSeconds = Math.round(millis / 1000);
+                 if (totalSeconds === 0 && !showZeroSeconds) return "0s";
+                 const hours = Math.floor(totalSeconds / 3600);
+                 const minutes = Math.floor((totalSeconds % 3600) / 60);
+                 const seconds = totalSeconds % 60;
+                 let parts = [];
+                 if (hours > 0) parts.push(`${hours}h`);
+                 if (minutes > 0) parts.push(`${minutes}m`);
+                 if (seconds > 0 || parts.length === 0 || (showZeroSeconds && millis >= 0)) {
+                    parts.push(`${seconds}s`);
+                 }
+                 return parts.join(' ');
+            }
+
+            function formatCountdown(millis) {
+                if (isNaN(millis) || millis < 0) return "0h 0m 0s";
+                const totalSeconds = Math.max(0, Math.round(millis / 1000));
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                 return `${hours}h ${minutes}m ${seconds}s`;
+            }
+
+            function updateClock() {
+                const now = new Date();
+                currentTimeEl.textContent = formatTime(now);
+            }
+
+            function calculateAllTimes(baseStartTime) {
+                 if (!(baseStartTime instanceof Date) || isNaN(baseStartTime)) {
+                    console.warn("calculateAllTimes called with invalid baseStartTime:", baseStartTime);
+                     activities = activities.map(activity => ({ ...activity, startTime: null, endTime: null }));
+                    return;
+                }
+                let accumulatedTime = new Date(baseStartTime);
+                activities = activities.map(activity => {
+                    const activityStartTime = new Date(accumulatedTime);
+                    const durationMillis = activity.durationMillis;
+                    const activityEndTime = new Date(activityStartTime.getTime() + durationMillis);
+                    accumulatedTime = new Date(activityEndTime);
+                    return { ...activity, startTime: activityStartTime, endTime: activityEndTime };
+                });
+            }
+
+            // Render the list of activities in the UI
+            function renderActivities() {
+                activityListEl.innerHTML = ''; // Clear existing list
+
+                // --- Update Button States Based on List & Timer Status ---
+                // Do this *before* clearing the list if needed, or after based on 'activities' array
+                // Let's do it after potentially modifying 'activities' array.
+                // Placed here, it runs after adding, resetting, stopping.
+                if (!isRunning) {
+                    startBtn.disabled = activities.length === 0;
+                    // Stop and Reset states are primarily handled in their respective functions (start/stop/reset)
+                    // But ensure stop is disabled if not running
+                    stopBtn.disabled = true;
+                }
+
+
+                if (activities.length === 0) {
+                    activityListEl.innerHTML = '<li>No activities added yet.</li>';
+                    // Ensure Start is disabled explicitly when list is empty
+                    startBtn.disabled = true;
+                    if (previewToggle.checked) updatePreview();
+                    // Clear countdowns when list is empty
+                    clearCountdownDisplays();
+                    return;
+                }
+
+
+                const now = isRunning ? new Date().getTime() : null;
+
+                activities.forEach((activity, index) => {
+                    const li = document.createElement('li');
+                    li.setAttribute('data-id', activity.id);
+
+                    const detailsDiv = document.createElement('div');
+                    detailsDiv.classList.add('activity-details');
+                    const descSpan = document.createElement('span');
+                    descSpan.classList.add('description');
+                    descSpan.textContent = activity.description;
+                    detailsDiv.appendChild(descSpan);
+                    const durationSpan = document.createElement('span');
+                    durationSpan.classList.add('duration');
+                    durationSpan.textContent = ` (${activity.durationString})`;
+                    detailsDiv.appendChild(durationSpan);
+                    const lapCountdownDiv = document.createElement('div');
+                    lapCountdownDiv.classList.add('lap-countdown');
+                    detailsDiv.appendChild(lapCountdownDiv);
+
+                    const timesDiv = document.createElement('div');
+                    timesDiv.classList.add('activity-times');
+                    let displayStartTime = null;
+                    let displayEndTime = null;
+                    if (isRunning && overallStartTime) {
+                        displayStartTime = activity.startTime;
+                        displayEndTime = activity.endTime;
+                    } else if (previewToggle.checked && activity.startTime) { // Check activity.startTime exists for preview
+                         displayStartTime = activity.startTime;
+                         displayEndTime = activity.endTime;
+                    }
+                    const startStr = `Starts: ${formatTime(displayStartTime)}`;
+                    const endStr = `Ends: ${formatTime(displayEndTime)}`;
+                    timesDiv.innerHTML = `<span>${startStr}</span><span>${endStr}</span>`;
+
+                    li.appendChild(detailsDiv);
+                    li.appendChild(timesDiv);
+
+                    // Visual State and Progress Bar
+                    li.classList.remove('active');
+                    li.style.background = ''; // Reset background
+
+                    if (isRunning && index === currentActivityIndex) {
+                        li.classList.add('active');
+                        const totalDuration = activity.durationMillis;
+                        let progressPercentage = 0;
+                        if (totalDuration > 0 && activity.startTime && now) {
+                            const elapsed = now - activity.startTime.getTime();
+                            progressPercentage = Math.max(0, Math.min(100, (elapsed / totalDuration) * 100));
+                        }
+                         // Apply gradient background for progress
+                        li.style.background = `linear-gradient(to right, ${ACTIVE_COLOR} ${progressPercentage}%, ${INACTIVE_COLOR} ${progressPercentage}%)`;
+
+                    } else if (activity.endTime && !isRunning && now && activity.endTime.getTime() <= now ) {
+                         // Optional: Mark completed items visually when stopped if they finished before stop
+                         // li.style.background = ACTIVE_COLOR;
+                    } else {
+                         li.style.background = INACTIVE_COLOR; // Ensure default if not active/progressing
+                    }
+
+                    activityListEl.appendChild(li);
+                });
+
+                 // Update countdowns immediately after rendering if running
+                 if (isRunning) {
+                     updateCountdownDisplays();
+                 } else {
+                     clearCountdownDisplays(); // Ensure cleared if not running
+                 }
+            }
+
+
+            function addActivity() {
+                const description = activityDescInput.value.trim();
+                const hours = parseInt(activityDurationHInput.value, 10) || 0;
+                const minutes = parseInt(activityDurationMInput.value, 10) || 0;
+                const seconds = parseInt(activityDurationSInput.value, 10) || 0;
+                const totalMillis = (hours * 3600 + minutes * 60 + seconds) * 1000;
+
+                if (!description) { alert('Please enter a valid description.'); return; }
+                if (totalMillis <= 0) { alert('Please enter a positive duration (at least 1 second).'); return; }
+                if (hours < 0 || minutes < 0 || seconds < 0 || minutes > 59 || seconds > 59) {
+                    alert('Please enter valid hours (>=0), minutes (0-59), and seconds (0-59).'); return;
+                }
+
+                const newActivity = {
+                    id: nextActivityId++, description: description,
+                    durationMillis: totalMillis, durationString: formatDuration(totalMillis),
+                    startTime: null, endTime: null
+                };
+                activities.push(newActivity);
+
+                activityDescInput.value = '';
+                activityDurationHInput.value = '';
+                activityDurationMInput.value = '';
+                activityDurationSInput.value = '';
+                activityDescInput.focus();
+
+                // --- CRITICAL: Enable Start button if this is the first activity & not running ---
+                // This is now handled within renderActivities which is called next.
+
+                renderActivities(); // This will update the list AND button states
+                if (previewToggle.checked) { updatePreview(); }
+            }
+
+            function updatePreview() {
+                if (isRunning) return;
+
+                if (previewToggle.checked) {
+                    previewTimeInputContainer.classList.remove('hidden');
+                    const previewTimeValue = previewStartTimeInput.value;
+                    let previewBaseTime = new Date();
+                    if (previewTimeValue) {
+                        const [h, m] = previewTimeValue.split(':').map(Number);
+                        if (!isNaN(h) && !isNaN(m)) previewBaseTime.setHours(h, m, 0, 0);
+                        else console.warn("Invalid preview time input:", previewTimeValue);
+                    }
+                    calculateAllTimes(previewBaseTime);
+                } else {
+                    previewTimeInputContainer.classList.add('hidden');
+                     activities = activities.map(activity => ({ ...activity, startTime: null, endTime: null }));
+                }
+                renderActivities(); // Re-render to show/hide preview times and update button states
+            }
+
+
+            // --- Timer Control Logic ---
+
+            function startRoadmap() {
+                if (isRunning || activities.length === 0) return;
+
+                isRunning = true;
+                overallStartTime = new Date();
+
+                calculateAllTimes(overallStartTime);
+                currentActivityIndex = 0;
+
+                statusEl.textContent = `Status: Running - Activity ${currentActivityIndex + 1}`;
+                startBtn.disabled = true;
+                stopBtn.disabled = false; // *** ENABLE STOP ***
+                resetBtn.disabled = true;
+                addActivityBtn.disabled = true;
+                activityDescInput.disabled = true;
+                activityDurationHInput.disabled = true;
+                activityDurationMInput.disabled = true;
+                activityDurationSInput.disabled = true;
+                previewToggle.disabled = true;
+                previewStartTimeInput.disabled = true;
+
+                renderActivities();
+                timerInterval = setInterval(checkActivityStatus, 500);
+                checkActivityStatus(); // Run immediately
+            }
+
+            function stopRoadmap(statusMessage = 'Status: Stopped') {
+                if (!isRunning) return;
+
+                isRunning = false;
+                clearInterval(timerInterval);
+                timerInterval = null;
+                currentActivityIndex = -1;
+                overallStartTime = null;
+
+                statusEl.textContent = statusMessage;
+                // *** START is enabled if activities exist, STOP is disabled, RESET is enabled ***
+                startBtn.disabled = activities.length === 0;
+                stopBtn.disabled = true;
+                resetBtn.disabled = false;
+                addActivityBtn.disabled = false;
+                activityDescInput.disabled = false;
+                activityDurationHInput.disabled = false;
+                activityDurationMInput.disabled = false;
+                activityDurationSInput.disabled = false;
+                previewToggle.disabled = false;
+                previewStartTimeInput.disabled = false;
+
+                 // Optionally clear run times if not previewing
+                 if (!previewToggle.checked) {
+                    activities = activities.map(act => ({ ...act, startTime: null, endTime: null }));
+                 }
+
+
+                // Re-render which also handles button states and clears progress bars
+                renderActivities();
+
+                 // Explicitly clear countdowns AFTER rendering might have cleared them already, but safe
+                 clearCountdownDisplays();
+
+                 // If preview is on, re-apply preview times after stopping
+                 if (previewToggle.checked) {
+                     updatePreview(); // This calls renderActivities again
+                 }
+            }
+
+            function resetAll() {
+                 if (isRunning) {
+                     stopRoadmap('Status: Reset'); // Use stop to handle cleanup and state changes
+                 }
+
+                 activities = [];
+                 nextActivityId = 0;
+
+                 activityDescInput.value = '';
+                 activityDurationHInput.value = '';
+                 activityDurationMInput.value = '';
+                 activityDurationSInput.value = '';
+
+                 previewToggle.checked = false;
+                 previewStartTimeInput.value = '';
+                 previewTimeInputContainer.classList.add('hidden');
+
+                 statusEl.textContent = 'Status: Idle';
+                 clearCountdownDisplays();
+
+                 // Explicitly set button states after reset
+                 startBtn.disabled = true; // List is empty
+                 stopBtn.disabled = true; // Timer is stopped
+                 resetBtn.disabled = false; // Reset always available when stopped
+
+                 renderActivities(); // Re-render the empty list and confirm button states
+            }
+
+
+            // --- Countdown Display Functions ---
+            function updateCountdownDisplays() {
+                if (!isRunning || currentActivityIndex < 0 || currentActivityIndex >= activities.length) {
+                     clearCountdownDisplays();
+                     return;
+                }
+
+                try { // Add try-catch for safety during time calculations
+                    const now = new Date().getTime();
+                    const currentActivity = activities[currentActivityIndex];
+                    const lastActivity = activities[activities.length - 1];
+
+                    // Lap Countdown
+                     if(currentActivity.endTime) { // Check endTime exists
+                        const lapMillisLeft = Math.max(0, currentActivity.endTime.getTime() - now);
+                        const lapCountdownStr = formatCountdown(lapMillisLeft);
+                        const activeLi = activityListEl.querySelector('li.active');
+                        if (activeLi) {
+                            const lapEl = activeLi.querySelector('.lap-countdown');
+                            if (lapEl) lapEl.textContent = `Time Left: ${lapCountdownStr}`;
+                        }
+                     } else { console.warn("Current activity missing end time for lap countdown.");}
+
+
+                    // Global Countdown
+                     if(lastActivity.endTime) { // Check endTime exists
+                        const globalMillisLeft = Math.max(0, lastActivity.endTime.getTime() - now);
+                        const globalCountdownStr = formatCountdown(globalMillisLeft);
+                        globalCountdownEl.textContent = `Total Time Left: ${globalCountdownStr}`;
+                     } else { console.warn("Last activity missing end time for global countdown.");}
+
+
+                } catch (error) {
+                    console.error("Error updating countdowns:", error);
+                    clearCountdownDisplays(); // Clear if error occurs
+                }
+
+            }
+
+            function clearCountdownDisplays() {
+                 globalCountdownEl.textContent = '';
+                 activityListEl.querySelectorAll('.lap-countdown').forEach(el => el.textContent = '');
+                  // Reset background of potentially active item if stopping
+                 const potentiallyActive = activityListEl.querySelector('li.active');
+                 if (potentiallyActive && !isRunning) {
+                      potentiallyActive.style.background = ''; // Reset gradient
+                      // No need to remove active class here, renderActivities handles it
+                 }
+            }
+
+
+            // --- Check Activity Status (Core Timer Loop) ---
+            function checkActivityStatus() {
+                 if (!isRunning || currentActivityIndex < 0 || currentActivityIndex >= activities.length) {
+                     if (isRunning) stopRoadmap('Status: Error - Stopped');
+                     return;
+                 }
+
+                const now = new Date();
+                const currentActivity = activities[currentActivityIndex];
+
+                if (!currentActivity || !(currentActivity.endTime instanceof Date) || isNaN(currentActivity.endTime)) {
+                     console.error("Invalid current activity or end time:", currentActivity);
+                     stopRoadmap("Status: Error - Invalid Activity Data");
+                     alert("An internal error occurred. Stopping roadmap.");
+                     return;
+                 }
+
+                 // Update Progress Bar
+                 const activeLi = activityListEl.querySelector('li.active');
+                 if (activeLi) {
+                     const totalDuration = currentActivity.durationMillis;
+                     let progressPercentage = 100;
+                     if (totalDuration > 0 && currentActivity.startTime) {
+                         const elapsed = now.getTime() - currentActivity.startTime.getTime();
+                         progressPercentage = Math.max(0, Math.min(100, (elapsed / totalDuration) * 100));
+                     }
+                     activeLi.style.background = `linear-gradient(to right, ${ACTIVE_COLOR} ${progressPercentage}%, ${INACTIVE_COLOR} ${progressPercentage}%)`;
+                 }
+
+                 // Update Countdowns
+                 updateCountdownDisplays();
+
+                // Check for Lap Completion
+                if (now.getTime() >= currentActivity.endTime.getTime()) {
+                    if(activeLi) activeLi.style.background = ACTIVE_COLOR; // Final fill
+
+                    currentActivityIndex++;
+
+                    if (currentActivityIndex >= activities.length) {
+                        stopRoadmap('Status: Completed!');
+                    } else {
+                         statusEl.textContent = `Status: Running - Activity ${currentActivityIndex + 1}`;
+                        renderActivities(); // Re-render for next item highlight/progress reset
+                    }
+                } else {
+                     // Still running current activity
+                     statusEl.textContent = `Status: Running - Activity ${currentActivityIndex + 1}`;
+                }
+                updateClock();
+            }
+
+
+            // --- Event Listeners ---
+            addActivityBtn.addEventListener('click', addActivity);
+            [activityDescInput, activityDurationHInput, activityDurationMInput, activityDurationSInput].forEach(input => {
+                 input.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); addActivityBtn.click(); } });
+            });
+            startBtn.addEventListener('click', startRoadmap);
+            stopBtn.addEventListener('click', () => stopRoadmap()); // Use default stop message
+            resetBtn.addEventListener('click', resetAll);
+            previewToggle.addEventListener('change', updatePreview);
+            previewStartTimeInput.addEventListener('input', () => { if (previewToggle.checked) updatePreview(); });
+
+
+            // --- Initialization ---
+            // Set initial button states explicitly
+            startBtn.disabled = true;
+            stopBtn.disabled = true;
+            resetBtn.disabled = false;
+
+            updatePreview(); // Set initial preview state
+            renderActivities(); // Initial render (handles button states based on empty list)
+            updateClock();
+            clockInterval = setInterval(updateClock, 1000);
+
+        });
+        // --- JavaScript Ends Here ---
+    </script>
+</body>
+</html>
